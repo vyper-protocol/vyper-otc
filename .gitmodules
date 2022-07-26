@@ -1,0 +1,3 @@
+[submodule "deps/vyper-core"]
+	path = deps/vyper-core
+	url = https://github.com/vyper-protocol/vyper-core
