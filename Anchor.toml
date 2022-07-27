@@ -1,7 +1,7 @@
 [features]
 seeds = false
 [programs.localnet]
-vyper_otc = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+vyper_otc = "QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP"
 
 [registry]
 url = "https://anchor.projectserum.com"
@@ -12,3 +12,15 @@ wallet = "/Users/giacomocavicchioli/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[[test.genesis]]
+address = "mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"
+program = "./deps/vyper-core/target/deploy/vyper_core.so"
+
+[[test.genesis]]
+address = "FB7HErqohbgaVV21BRiiMTuiBpeUYT8Yw7Z6EdEL7FAG"
+program = "./deps/vyper-core/target/deploy/rate_mock.so"
+
+[[test.genesis]]
+address = "Gc2ZKNuCpdNKhAzEGS2G9rBSiz4z8MULuC3M3t8EqdWA"
+program = "./deps/vyper-core/target/deploy/redeem_logic_lending.so"
