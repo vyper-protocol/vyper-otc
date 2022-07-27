@@ -1,8 +1,10 @@
 
 pub mod initialize;
 pub mod deposit;
-pub mod redeem;
+pub mod settle;
+pub mod claim;
 
 pub use initialize::*;
 pub use deposit::*;
-pub use redeem::*;
+pub use settle::*;
+pub use claim::*;

@@ -29,7 +29,9 @@ pub enum VyperOtcErrorCode {
     #[msg("otc is closed")]
     OtcClosed,
 
-    #[msg("beneficiary mismatch")]
-    BeneficiaryMismatch,
-
+    #[msg("beneficiary not found")]
+    BeneficiaryNotFound,
+    
+    #[msg("settle not executed yet")]
+    SettleNotExecutedYet
 }

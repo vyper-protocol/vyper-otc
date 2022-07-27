@@ -26,9 +26,9 @@ pub mod vyper_otc {
         instructions::deposit::handler(ctx, input_data)
     }
 
-    pub fn redeem(
+    pub fn settle(
         ctx: Context<RedeemContext>,
     ) -> Result<()> {
-        instructions::redeem::handler(ctx)
+        instructions::settle::handler(ctx)
     }
 }
