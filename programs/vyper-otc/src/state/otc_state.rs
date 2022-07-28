@@ -39,6 +39,23 @@ impl OtcState {
     }
 
     pub const LEN: usize = 8 + // discriminator
-    1024 // TODO TBD
+    8 + // pub created: i64,
+    8 + // pub deposit_expiration: i64,
+    8 + // pub settle_available_from: i64,
+    1 + // pub settle_executed: bool,
+    8 + // pub senior_deposit_amount: u64,
+    8 + // pub junior_deposit_amount: u64,
+    1+32 + // pub senior_side_beneficiary: Option<Pubkey>,
+    1+32 + // pub junior_side_beneficiary: Option<Pubkey>,
+    32 + // pub vyper_tranche_config: Pubkey,
+    32 + // pub otc_senior_reserve_token_account: Pubkey,
+    32 + // pub otc_junior_reserve_token_account: Pubkey,
+    32 + // pub otc_senior_tranche_token_account: Pubkey,
+    32 + // pub otc_junior_tranche_token_account: Pubkey,
+    32 + // pub otc_authority: Pubkey,
+    32 + // pub authority_seed: Pubkey,
+    1 + // pub authority_bump: [u8; 1],
+    3 + // pub version: [u8; 3],
+    64 // padding
     ;
 }
