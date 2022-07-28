@@ -5,13 +5,10 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 
 export type TokenAccountWrapper = {
   reserveMint: PublicKey;
-  userA: Keypair;
-  userA_tokenAccount: PublicKey;
-  userB: Keypair;
-  userB_tokenAccount: PublicKey;
+  users: { user: Keypair; tokenAccount: PublicKey }[];
 };
 
-export async function createTokenAccountWrapper(provider: AnchorProvider, userA_amount: number, userB_amount: number, decimals: number = 0): Promise<TokenAccountWrapper> {
+export async function createTokenAccountWrapper(provider: AnchorProvider, amounts: number[], decimals: number = 0): Promise<TokenAccountWrapper> {
   const mint = Keypair.generate();
   const mintAuthority = Keypair.generate();
 
@@ -20,28 +17,26 @@ export async function createTokenAccountWrapper(provider: AnchorProvider, userA_
   const sig_createMint = await provider.sendAndConfirm(new anchor.web3.Transaction().add(...createMintIxs), [mint]);
   // console.log("sig: " + sig_createMint);
 
-  // token account A
-  // console.log("creating user A");
-  const [userA, userA_tokenAccount] = await createUserAndTokenAccount(provider, mint.publicKey);
-  // console.log("creating user B");
-  const [userB, userB_tokenAccount] = await createUserAndTokenAccount(provider, mint.publicKey);
+  const res: TokenAccountWrapper = {
+    reserveMint: mint.publicKey,
+    users: [],
+  };
+
+  const mintTx = new anchor.web3.Transaction();
+  for (let i = 0; i < amounts.length; i++) {
+    const [user, tokenAccount] = await createUserAndTokenAccount(provider, mint.publicKey);
+    mintTx.add(createMintToInstruction(mint.publicKey, tokenAccount, mintAuthority.publicKey, amounts[i]));
+    res.users.push({
+      user,
+      tokenAccount,
+    });
+  }
 
   // console.log("creating mint & minting");
-  const sig = await provider.sendAndConfirm(
-    new anchor.web3.Transaction()
-      .add(createMintToInstruction(mint.publicKey, userA_tokenAccount, mintAuthority.publicKey, userA_amount))
-      .add(createMintToInstruction(mint.publicKey, userB_tokenAccount, mintAuthority.publicKey, userB_amount)),
-    [mintAuthority]
-  );
+  const sig = await provider.sendAndConfirm(mintTx, [mintAuthority]);
   // console.log("sig: " + sig);
 
-  return {
-    reserveMint: mint.publicKey,
-    userA,
-    userA_tokenAccount,
-    userB,
-    userB_tokenAccount,
-  };
+  return res;
 }
 
 async function createUserAndTokenAccount(provider: anchor.AnchorProvider, mint: anchor.web3.PublicKey): Promise<[Keypair, PublicKey]> {
@@ -54,7 +49,7 @@ async function createUserAndTokenAccount(provider: anchor.AnchorProvider, mint: 
     anchor.web3.SystemProgram.transfer({
       fromPubkey: provider.wallet.publicKey,
       toPubkey: userKP.publicKey,
-      lamports: anchor.web3.LAMPORTS_PER_SOL,
+      lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
     })
   );
   tx.add(createAssociatedTokenAccountInstruction(provider.wallet.publicKey, user_aToken, userKP.publicKey, mint));
