@@ -70,22 +70,24 @@ pub fn handler(ctx: Context<ClaimContext>) -> Result<()> {
     if let Some(is_senior) = is_senior_opt {
         // transfer assets
         if is_senior {
-            token::transfer(CpiContext::new(
+            token::transfer(CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.otc_senior_reserve_token_account.to_account_info(),
                     to: ctx.accounts.beneficiary_token_account.to_account_info(),
-                    authority: ctx.accounts.signer.to_account_info(),
+                    authority: ctx.accounts.otc_authority.to_account_info(),
                 },
+                &[&ctx.accounts.otc_state.authority_seeds()]
             ), ctx.accounts.otc_senior_reserve_token_account.amount)?;
         } else {
-            token::transfer(CpiContext::new(
+            token::transfer(CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.otc_junior_reserve_token_account.to_account_info(),
                     to: ctx.accounts.beneficiary_token_account.to_account_info(),
-                    authority: ctx.accounts.signer.to_account_info(),
+                    authority: ctx.accounts.otc_authority.to_account_info(),
                 },
+                &[&ctx.accounts.otc_state.authority_seeds()]
             ), ctx.accounts.otc_junior_reserve_token_account.amount)?;
         }
     }

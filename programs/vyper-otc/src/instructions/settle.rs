@@ -27,10 +27,6 @@ pub struct RedeemContext<'info> {
     #[account(seeds = [otc_state.key().as_ref(), b"authority".as_ref()], bump)]
     pub otc_authority: AccountInfo<'info>,
 
-    /// User reserve token account
-    #[account(mut, token::authority = signer)]
-    pub user_reserve_token_account: Box<Account<'info, TokenAccount>>,
-
     // - - - - - - - - - - - - 
     // OTC Token Accounts
 
@@ -69,7 +65,7 @@ pub struct RedeemContext<'info> {
     // Vyper Accounts
 
     /// Vyper Core Tranche Configuration
-    #[account(has_one = reserve_mint, has_one = senior_tranche_mint, has_one = junior_tranche_mint)]
+    #[account(mut, has_one = reserve_mint, has_one = senior_tranche_mint, has_one = junior_tranche_mint)]
     pub vyper_tranche_config: Box<Account<'info, TrancheConfig>>,
 
     /// Vyper Core tranche configuration authority
@@ -100,7 +96,7 @@ impl<'info> RedeemContext<'info> {
         &self, is_senior: bool
     ) -> CpiContext<'_, '_, '_, 'info, vyper_core::cpi::accounts::RedeemContext<'info>> {
 
-        let source_reserve_account = if is_senior {
+        let dest_reserve_account = if is_senior {
             &self.otc_senior_reserve_token_account
         } else {
             &self.otc_junior_reserve_token_account
@@ -109,11 +105,11 @@ impl<'info> RedeemContext<'info> {
         CpiContext::new(
             self.vyper_core.to_account_info(),
             vyper_core::cpi::accounts::RedeemContext {
-                signer: self.signer.to_account_info(),
+                signer: self.otc_authority.to_account_info(),
                 tranche_config: self.vyper_tranche_config.to_account_info(),
                 tranche_authority: self.vyper_tranche_authority.to_account_info(),
                 reserve: self.vyper_reserve.to_account_info(),
-                user_reserve_token: source_reserve_account.to_account_info(),
+                user_reserve_token: dest_reserve_account.to_account_info(),
                 senior_tranche_mint: self.senior_tranche_mint.to_account_info(),
                 junior_tranche_mint: self.junior_tranche_mint.to_account_info(),
                 senior_tranche_source: self.otc_senior_tranche_token_account.to_account_info(),

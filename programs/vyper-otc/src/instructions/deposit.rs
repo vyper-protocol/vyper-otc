@@ -69,7 +69,7 @@ pub struct DepositContext<'info> {
     // Vyper Accounts
 
     /// Vyper Core Tranche Configuration
-    #[account(has_one = reserve_mint, has_one = senior_tranche_mint, has_one = junior_tranche_mint)]
+    #[account(mut, has_one = reserve_mint, has_one = senior_tranche_mint, has_one = junior_tranche_mint)]
     pub vyper_tranche_config: Box<Account<'info, TrancheConfig>>,
     
     /// Vyper Core tranche configuration authority
@@ -100,17 +100,24 @@ pub struct DepositContext<'info> {
 
 impl<'info> DepositContext<'info> {
 
-    fn to_vyper_senior_deposit_context(
+    fn deposit_to_vyper_context(
         &self,
+        is_senior: bool
     ) -> CpiContext<'_, '_, '_, 'info, vyper_core::cpi::accounts::DepositContext<'info>> {
+
+        let source_reserve_token_account = if is_senior { 
+            &self.otc_senior_reserve_token_account
+        } else {
+            &self.otc_junior_reserve_token_account
+        };
         CpiContext::new(
             self.vyper_core.to_account_info(),
             vyper_core::cpi::accounts::DepositContext {
-                signer: self.signer.to_account_info(),
+                signer: self.otc_authority.to_account_info(),
                 tranche_config: self.vyper_tranche_config.to_account_info(),
                 tranche_authority: self.vyper_tranche_authority.to_account_info(),
                 reserve: self.vyper_reserve.to_account_info(),
-                user_reserve_token: self.otc_senior_reserve_token_account.to_account_info(),
+                user_reserve_token: source_reserve_token_account.to_account_info(),
                 senior_tranche_mint: self.senior_tranche_mint.to_account_info(),
                 junior_tranche_mint: self.junior_tranche_mint.to_account_info(),
                 senior_tranche_dest: self.otc_senior_tranche_token_account.to_account_info(),
@@ -122,27 +129,6 @@ impl<'info> DepositContext<'info> {
         )
     }
 
-    fn to_vyper_junior_deposit_context(
-        &self,
-    ) -> CpiContext<'_, '_, '_, 'info, vyper_core::cpi::accounts::DepositContext<'info>> {
-        CpiContext::new(
-            self.vyper_core.to_account_info(),
-            vyper_core::cpi::accounts::DepositContext {
-                signer: self.signer.to_account_info(),
-                tranche_config: self.vyper_tranche_config.to_account_info(),
-                tranche_authority: self.vyper_tranche_authority.to_account_info(),
-                reserve: self.vyper_reserve.to_account_info(),
-                user_reserve_token: self.otc_junior_reserve_token_account.to_account_info(),
-                senior_tranche_mint: self.senior_tranche_mint.to_account_info(),
-                junior_tranche_mint: self.junior_tranche_mint.to_account_info(),
-                senior_tranche_dest: self.otc_senior_tranche_token_account.to_account_info(),
-                junior_tranche_dest: self.otc_junior_tranche_token_account.to_account_info(),
-                system_program: self.system_program.to_account_info(),
-                token_program: self.token_program.to_account_info(),
-                rent: self.rent.to_account_info(),
-            },
-        )
-    }
 }
 
 
@@ -196,7 +182,7 @@ pub fn handler(ctx: Context<DepositContext>, input_data: DepositInputData) -> Re
     if ctx.accounts.otc_state.senior_side_beneficiary.is_some() && ctx.accounts.otc_state.junior_side_beneficiary.is_some() {
         vyper_core::cpi::deposit(
             ctx.accounts
-                .to_vyper_senior_deposit_context()
+                .deposit_to_vyper_context(true)
                 .with_signer(&[&ctx.accounts.otc_state.authority_seeds()]),
             vyper_core::instructions::DepositInput {
                 reserve_quantity: [ctx.accounts.otc_state.senior_deposit_amount, 0],
@@ -205,7 +191,7 @@ pub fn handler(ctx: Context<DepositContext>, input_data: DepositInputData) -> Re
     
         vyper_core::cpi::deposit(
             ctx.accounts
-                .to_vyper_junior_deposit_context()
+                .deposit_to_vyper_context(false)
                 .with_signer(&[&ctx.accounts.otc_state.authority_seeds()]),
             vyper_core::instructions::DepositInput {
                 reserve_quantity: [0, ctx.accounts.otc_state.junior_deposit_amount],

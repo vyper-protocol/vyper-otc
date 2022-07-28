@@ -31,4 +31,10 @@ pub mod vyper_otc {
     ) -> Result<()> {
         instructions::settle::handler(ctx)
     }
+
+    pub fn claim(
+        ctx: Context<ClaimContext>,
+    ) -> Result<()> {
+        instructions::claim::handler(ctx)
+    }
 }
