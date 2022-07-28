@@ -4,10 +4,11 @@ import { getAccount } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { expect } from "chai";
 import { RateMock, IDL as RateMockIDL } from "../deps/vyper-core/target/types/rate_mock";
-import { RedeemLogicLending, IDL as RedeemLogicLendingIDL } from "../deps/vyper-core/target/types/redeem_logic_lending";
+import { RedeemLogicVanillaOption, IDL as RedeemLogicVanillaOptionIDL } from "../deps/vyper-core/target/types/redeem_logic_vanilla_option";
 import { VyperCore, IDL as VyperCoreIDL } from "../deps/vyper-core/target/types/vyper_core";
 import { RateMockPlugin } from "../deps/vyper-core/tests/sdk/plugins/rates/RateMockPlugin";
 import { RedeemLogicLendingPlugin } from "../deps/vyper-core/tests/sdk/plugins/redeemLogic/RedeemLogicLendingPlugin";
+import { RedeemLogicVanillaOptionPlugin } from "../deps/vyper-core/tests/sdk/plugins/redeemLogic/RedeemLogicVanillaOptionPlugin";
 import { createMint } from "../deps/vyper-core/tests/utils";
 import { VyperOtc } from "../target/types/vyper_otc";
 import sleep from "./utils/sleep";
@@ -15,7 +16,7 @@ import { createTokenAccountWrapper } from "./utils/tokenAccount";
 import { createVyperCoreTrancheConfig } from "./utils/vyperCore";
 
 const RATE_MOCK_PROGRAM_ID = new PublicKey("FB7HErqohbgaVV21BRiiMTuiBpeUYT8Yw7Z6EdEL7FAG");
-const REDEEM_LOGIC_LENDING_PROGRAM_ID = new PublicKey("Gc2ZKNuCpdNKhAzEGS2G9rBSiz4z8MULuC3M3t8EqdWA");
+const REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID = new PublicKey("8fSeRtFseNrjdf8quE2YELhuzLkHV7WEGRPA9Jz8xEVe");
 
 describe("vyper-otc", () => {
   // Configure the client to use the local cluster.
@@ -25,15 +26,15 @@ describe("vyper-otc", () => {
   const program = anchor.workspace.VyperOtc as Program<VyperOtc>;
   const vyperCoreProgram = new Program<VyperCore>(VyperCoreIDL, new PublicKey("mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"), provider);
 
-  const redeemLogicLendingProgram = new Program<RedeemLogicLending>(RedeemLogicLendingIDL, REDEEM_LOGIC_LENDING_PROGRAM_ID, provider);
+  const redeemLogicVanillaOptionProgram = new Program<RedeemLogicVanillaOption>(RedeemLogicVanillaOptionIDL, REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID, provider);
   const rateMockProgram = new Program<RateMock>(RateMockIDL, RATE_MOCK_PROGRAM_ID, provider);
-  const redeemLogic = RedeemLogicLendingPlugin.create(redeemLogicLendingProgram, provider);
+  const redeemLogic = RedeemLogicVanillaOptionPlugin.create(redeemLogicVanillaOptionProgram, provider);
   const rateMock = RateMockPlugin.create(rateMockProgram, provider);
 
   it("initialize", async () => {
     const reserveMint = await createMint(provider);
     await rateMock.initialize();
-    await redeemLogic.initialize(5000);
+    await redeemLogic.initialize(5000, true, true);
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
@@ -103,7 +104,7 @@ describe("vyper-otc", () => {
 
     const { reserveMint, userA, userA_tokenAccount, userB, userB_tokenAccount } = await createTokenAccountWrapper(provider, seniorDepositAmount, juniorDepositAmount);
     await rateMock.initialize();
-    await redeemLogic.initialize(5000);
+    await redeemLogic.initialize(5000, true, true);
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
@@ -189,7 +190,7 @@ describe("vyper-otc", () => {
 
     const { reserveMint, userA, userA_tokenAccount, userB, userB_tokenAccount } = await createTokenAccountWrapper(provider, seniorDepositAmount, juniorDepositAmount);
     await rateMock.initialize();
-    await redeemLogic.initialize(5000);
+    await redeemLogic.initialize(5000, true, true);
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
@@ -317,8 +318,8 @@ describe("vyper-otc", () => {
 
     const { reserveMint, userA, userA_tokenAccount, userB, userB_tokenAccount } = await createTokenAccountWrapper(provider, seniorDepositAmount, juniorDepositAmount);
     await rateMock.initialize();
-    await rateMock.setFairValue(5000);
-    await redeemLogic.initialize(5000);
+    await rateMock.setFairValue(8000);
+    await redeemLogic.initialize(5000, true, false);
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
@@ -428,8 +429,6 @@ describe("vyper-otc", () => {
     while (Math.round(Date.now() / 1000) < settleAvailableFrom + 2) {
       await sleep(1000);
     }
-
-    await rateMock.setFairValue(8000);
 
     const settleTx = await program.methods
       .settle()

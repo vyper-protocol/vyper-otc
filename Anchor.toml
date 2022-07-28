@@ -22,5 +22,5 @@ address = "FB7HErqohbgaVV21BRiiMTuiBpeUYT8Yw7Z6EdEL7FAG"
 program = "./deps/vyper-core/target/deploy/rate_mock.so"
 
 [[test.genesis]]
-address = "Gc2ZKNuCpdNKhAzEGS2G9rBSiz4z8MULuC3M3t8EqdWA"
-program = "./deps/vyper-core/target/deploy/redeem_logic_lending.so"
+address = "8fSeRtFseNrjdf8quE2YELhuzLkHV7WEGRPA9Jz8xEVe"
+program = "./deps/vyper-core/target/deploy/redeem_logic_vanilla_option.so"
