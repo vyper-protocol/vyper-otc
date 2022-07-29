@@ -1,7 +1,7 @@
 [package]
 name = "vyper-otc"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "vyper-otc application built on vyper-core"
 edition = "2021"
 
 [lib]
@@ -9,11 +9,12 @@ crate-type = ["cdylib", "lib"]
 name = "vyper_otc"
 
 [features]
+env-log = []
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = []
+default = ["env-log"]
 
 [profile.release]
 overflow-checks = true
