@@ -130,6 +130,14 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
         .ok_or(VyperOtcErrorCode::InitializationError)?];
     otc_state.version = get_version_arr();
 
+    emit!(InitializeEvent {
+        otc_state: ctx.accounts.otc_state.key(),
+        senior_deposit_amount: input_data.senior_deposit_amount,
+        junior_deposit_amount: input_data.junior_deposit_amount,
+        deposit_expiration: input_data.deposit_expiration,
+        settle_available_from: input_data.settle_available_from,
+    });
+
     Ok(())
 }
 
@@ -145,4 +153,13 @@ fn get_version_arr() -> [u8; 3] {
             .parse::<u8>()
             .expect("failed to parse patch version"),
     ]
+}
+
+#[event]
+pub struct InitializeEvent {
+    pub otc_state: Pubkey,
+    pub senior_deposit_amount: u64,
+    pub junior_deposit_amount: u64,
+    pub deposit_expiration: i64,
+    pub settle_available_from: i64,
 }
