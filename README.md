@@ -4,6 +4,8 @@
   </a>
 </p>
 
+# Vyper OTC
+
 Vyper OTC is a Solana Program built on top of [Vyper Core](https://github.com/vyper-protocol/vyper-core).
 
 # Setup, Build, and Test
