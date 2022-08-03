@@ -78,6 +78,7 @@ pub struct InitializeInputData {
     junior_deposit_amount: u64,
     deposit_expiration: i64,
     settle_available_from: i64,
+    description: [u8; 16]
 }
 
 pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData) -> Result<()> {
@@ -115,6 +116,7 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
     otc_state.settle_executed = false;
     otc_state.senior_deposit_amount = input_data.senior_deposit_amount;
     otc_state.junior_deposit_amount = input_data.junior_deposit_amount;
+    otc_state.description = input_data.description;
 
     // accounts
     otc_state.otc_senior_reserve_token_account = ctx.accounts.otc_senior_reserve_token_account.key();
