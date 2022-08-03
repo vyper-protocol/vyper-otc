@@ -13,13 +13,20 @@ wallet = "/Users/giacomocavicchioli/.config/solana/id.json"
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+# BTC USD Switchboard: https://switchboard.xyz/explorer/3/8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee
+[[test.validator.clone]]
+address = "8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee"
+
 [[test.genesis]]
 address = "mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"
 program = "./deps/vyper-core/target/deploy/vyper_core.so"
 
 [[test.genesis]]
-address = "FB7HErqohbgaVV21BRiiMTuiBpeUYT8Yw7Z6EdEL7FAG"
-program = "./deps/vyper-core/target/deploy/rate_mock.so"
+address = "2hGXiH1oEQwjCXRx8bNdHTi49ScZp7Mj2bxcjxtULKe1"
+program = "./deps/vyper-core/target/deploy/rate_switchboard.so"
 
 [[test.genesis]]
 address = "8fSeRtFseNrjdf8quE2YELhuzLkHV7WEGRPA9Jz8xEVe"

@@ -132,6 +132,8 @@ pub fn handler(ctx: Context<RedeemContext>) -> Result<()> {
         return err!(VyperOtcErrorCode::OtcClosed);
     }
 
+    // TODO: check if settlement has not been executed
+
     // redeem assets
     vyper_core::cpi::redeem(
         ctx.accounts

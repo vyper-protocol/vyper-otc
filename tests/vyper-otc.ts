@@ -3,7 +3,7 @@ import { Program } from "@project-serum/anchor";
 import { getAccount } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { expect } from "chai";
-import { RateMock, IDL as RateMockIDL } from "../deps/vyper-core/target/types/rate_mock";
+import { RateSwitchboard, IDL as RateSwitchboardIDL } from "../deps/vyper-core/target/types/rate_switchboard";
 import { RedeemLogicVanillaOption, IDL as RedeemLogicVanillaOptionIDL } from "../deps/vyper-core/target/types/redeem_logic_vanilla_option";
 import { VyperCore, IDL as VyperCoreIDL } from "../deps/vyper-core/target/types/vyper_core";
 import { RateMockPlugin } from "../deps/vyper-core/tests/sdk/plugins/rates/RateMockPlugin";
@@ -15,8 +15,10 @@ import sleep from "./utils/sleep";
 import { createTokenAccountWrapper } from "./utils/tokenAccount";
 import { createVyperCoreTrancheConfig } from "./utils/vyperCore";
 
-const RATE_MOCK_PROGRAM_ID = new PublicKey("FB7HErqohbgaVV21BRiiMTuiBpeUYT8Yw7Z6EdEL7FAG");
+const RATE_SWITCHBOARD_PROGRAM_ID = new PublicKey("2hGXiH1oEQwjCXRx8bNdHTi49ScZp7Mj2bxcjxtULKe1");
 const REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID = new PublicKey("8fSeRtFseNrjdf8quE2YELhuzLkHV7WEGRPA9Jz8xEVe");
+
+const BTC_USD_SWITCHBOARD_AGGREGATOR = new PublicKey("8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee");
 
 describe("vyper-otc", () => {
   // Configure the client to use the local cluster.
@@ -27,19 +29,38 @@ describe("vyper-otc", () => {
   const vyperCoreProgram = new Program<VyperCore>(VyperCoreIDL, new PublicKey("mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"), provider);
 
   const redeemLogicVanillaOptionProgram = new Program<RedeemLogicVanillaOption>(RedeemLogicVanillaOptionIDL, REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID, provider);
-  const rateMockProgram = new Program<RateMock>(RateMockIDL, RATE_MOCK_PROGRAM_ID, provider);
+  const rateSwitchboardProgram = new Program<RateSwitchboard>(RateSwitchboardIDL, RATE_SWITCHBOARD_PROGRAM_ID, provider);
+
   const redeemLogic = RedeemLogicVanillaOptionPlugin.create(redeemLogicVanillaOptionProgram, provider);
-  const rateMock = RateMockPlugin.create(rateMockProgram, provider);
 
   it("initialize", async () => {
     const reserveMint = await createMint(provider);
-    await rateMock.initialize();
     await redeemLogic.initialize(5000, true, true);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
 
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -106,13 +127,31 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
     await redeemLogic.initialize(5000, true, true);
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
 
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -195,13 +234,31 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
     await redeemLogic.initialize(5000, true, true);
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
 
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -287,14 +344,20 @@ describe("vyper-otc", () => {
       })
       .signers([userB])
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
@@ -317,7 +380,7 @@ describe("vyper-otc", () => {
 
   it("settle and claim", async () => {
     // input data
-    const seniorDepositAmount = 1;
+    const seniorDepositAmount = 10;
     const juniorDepositAmount = 1000;
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositExpiration = nowSeconds + 8;
@@ -327,14 +390,33 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
-    await rateMock.setFairValue(3000);
+
     await redeemLogic.initialize(5000, false, true);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
 
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -420,14 +502,20 @@ describe("vyper-otc", () => {
       })
       .signers([userB])
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
@@ -443,7 +531,6 @@ describe("vyper-otc", () => {
       await sleep(1000);
     }
 
-    await rateMock.setFairValue(3500);
     const settleTx = await program.methods
       .settle()
       .accounts({
@@ -465,14 +552,20 @@ describe("vyper-otc", () => {
         vyperCore: vyperCoreProgram.programId,
       })
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
@@ -533,13 +626,32 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
+
     await redeemLogic.initialize(5000, true, true);
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
 
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -624,14 +736,20 @@ describe("vyper-otc", () => {
         })
         .signers([userB])
         .preInstructions([
-          await rateMock.getRefreshIX(),
+          await rateSwitchboardProgram.methods
+            .refresh()
+            .accounts({
+              rateData: rateData.publicKey,
+            })
+            .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+            .instruction(),
           await vyperCoreProgram.methods
             .refreshTrancheFairValue()
             .accounts({
               trancheConfig: vyperConfig.trancheConfig,
               seniorTrancheMint: vyperConfig.seniorTrancheMint,
               juniorTrancheMint: vyperConfig.juniorTrancheMint,
-              rateProgramState: rateMock.state,
+              rateProgramState: rateData.publicKey,
               redeemLogicProgram: redeemLogic.programID,
               redeemLogicProgramState: redeemLogic.state,
             })
@@ -651,20 +769,36 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositExpiration = nowSeconds + 8;
     const settleAvailableFrom = nowSeconds + 1000;
-
+    await redeemLogic.initialize(5000, true, true);
     const {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
-    await rateMock.setFairValue(8000);
-    await redeemLogic.initialize(5000, true, false);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
-
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
     const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -747,14 +881,20 @@ describe("vyper-otc", () => {
       })
       .signers([userB])
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
@@ -784,14 +924,20 @@ describe("vyper-otc", () => {
           vyperCore: vyperCoreProgram.programId,
         })
         .preInstructions([
-          await rateMock.getRefreshIX(),
+          await rateSwitchboardProgram.methods
+            .refresh()
+            .accounts({
+              rateData: rateData.publicKey,
+            })
+            .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+            .instruction(),
           await vyperCoreProgram.methods
             .refreshTrancheFairValue()
             .accounts({
               trancheConfig: vyperConfig.trancheConfig,
               seniorTrancheMint: vyperConfig.seniorTrancheMint,
               juniorTrancheMint: vyperConfig.juniorTrancheMint,
-              rateProgramState: rateMock.state,
+              rateProgramState: rateData.publicKey,
               redeemLogicProgram: redeemLogic.programID,
               redeemLogicProgramState: redeemLogic.state,
             })
@@ -811,20 +957,36 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositExpiration = nowSeconds + 5;
     const settleAvailableFrom = nowSeconds + 1000;
-
+    await redeemLogic.initialize(5000, true, true);
     const {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await rateMock.initialize();
-    await rateMock.setFairValue(8000);
-    await redeemLogic.initialize(5000, true, false);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
-
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
     const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -887,7 +1049,7 @@ describe("vyper-otc", () => {
         .rpc();
       expect(true).to.be.false;
     } catch (err) {
-      expect(err.msg).to.be.eql("deposit is closed");
+      expect(err.error.errorMessage).to.be.eql("deposit is closed");
     }
   });
 
@@ -898,21 +1060,36 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositExpiration = nowSeconds + 8;
     const settleAvailableFrom = nowSeconds + 10;
-
+    await redeemLogic.initialize(5000, true, true);
     const {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }, { user: userC, tokenAccount: userC_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount, 1000]);
 
-    await rateMock.initialize();
-    await rateMock.setFairValue(8000);
-    await redeemLogic.initialize(5000, true, false);
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+      .signers([rateData])
+      .rpc();
 
     const otcState = anchor.web3.Keypair.generate();
     const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
 
-    const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, reserveMint, rateMock.programID, rateMock.state, redeemLogic.programID, redeemLogic.state, otcAuthority);
-
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
     // accounts to create
     const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
     const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -997,14 +1174,20 @@ describe("vyper-otc", () => {
       })
       .signers([userB])
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
@@ -1038,14 +1221,20 @@ describe("vyper-otc", () => {
         vyperCore: vyperCoreProgram.programId,
       })
       .preInstructions([
-        await rateMock.getRefreshIX(),
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts([BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false })))
+          .instruction(),
         await vyperCoreProgram.methods
           .refreshTrancheFairValue()
           .accounts({
             trancheConfig: vyperConfig.trancheConfig,
             seniorTrancheMint: vyperConfig.seniorTrancheMint,
             juniorTrancheMint: vyperConfig.juniorTrancheMint,
-            rateProgramState: rateMock.state,
+            rateProgramState: rateData.publicKey,
             redeemLogicProgram: redeemLogic.programID,
             redeemLogicProgramState: redeemLogic.state,
           })
