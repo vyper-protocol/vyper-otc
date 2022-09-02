@@ -21,5 +21,8 @@ pub enum VyperOtcErrorCode {
     BeneficiaryNotFound,
     
     #[msg("settle not executed yet")]
-    SettleNotExecutedYet
+    SettleNotExecutedYet,
+    
+    #[msg("settle already executed")]
+    SettleAlreadyExecuted
 }
