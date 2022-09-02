@@ -76,9 +76,10 @@ pub struct InitializeContext<'info> {
 pub struct InitializeInputData {
     senior_deposit_amount: u64,
     junior_deposit_amount: u64,
-    deposit_expiration: i64,
-    settle_available_from: i64,
-    description: [u8; 16]
+    deposit_start: Option<i64>,
+    deposit_end: i64,
+    settle_start: i64,
+    description: [u8; 128]
 }
 
 pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData) -> Result<()> {
@@ -103,16 +104,25 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
         VyperOtcErrorCode::InitializationError
     );
 
-    // check that otc_expiration > deposit_expiration
-    require_gt!(input_data.settle_available_from, input_data.deposit_expiration, VyperOtcErrorCode::InitializationError);
+    // require correct time sequence
+    if let Some(deposit_start) = input_data.deposit_start {
+        require_gt!(input_data.deposit_end, deposit_start, VyperOtcErrorCode::InitializationError);
+    }
+    require_gt!(input_data.settle_start, input_data.deposit_end, VyperOtcErrorCode::InitializationError);
 
     // create otc state
     let otc_state = &mut ctx.accounts.otc_state;
 
     // save input data
     otc_state.created = clock.unix_timestamp;
-    otc_state.deposit_expiration = input_data.deposit_expiration;
-    otc_state.settle_available_from = input_data.settle_available_from;
+    if let Some(deposit_start) = input_data.deposit_start {
+        otc_state.deposit_start = deposit_start;
+    } else {
+        // set deposit start to now
+        otc_state.deposit_start = Clock::get()?.unix_timestamp;
+    }
+    otc_state.deposit_end = input_data.deposit_end;
+    otc_state.settle_start = input_data.settle_start;
     otc_state.settle_executed = false;
     otc_state.senior_deposit_amount = input_data.senior_deposit_amount;
     otc_state.junior_deposit_amount = input_data.junior_deposit_amount;
@@ -136,8 +146,8 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
         otc_state: ctx.accounts.otc_state.key(),
         senior_deposit_amount: input_data.senior_deposit_amount,
         junior_deposit_amount: input_data.junior_deposit_amount,
-        deposit_expiration: input_data.deposit_expiration,
-        settle_available_from: input_data.settle_available_from,
+        deposit_expiration: input_data.deposit_end,
+        settle_available_from: input_data.settle_start,
     });
 
     Ok(())

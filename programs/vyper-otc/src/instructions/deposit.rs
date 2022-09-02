@@ -152,7 +152,7 @@ pub fn handler(ctx: Context<DepositContext>, input_data: DepositInputData) -> Re
     
     // check that the deposits are still open
     let clock = Clock::get()?;
-    if clock.unix_timestamp > ctx.accounts.otc_state.deposit_expiration {
+    if clock.unix_timestamp > ctx.accounts.otc_state.deposit_end {
         return err!(VyperOtcErrorCode::DepositClosed);
     }
 

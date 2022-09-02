@@ -2,7 +2,10 @@ import * as anchor from "@project-serum/anchor";
 import { Program, Wallet } from "@project-serum/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { VyperOtc, IDL as VyperOtcIDL } from "../target/types/vyper_otc";
-import { RedeemLogicVanillaOption, IDL as RedeemLogicVanillaOptionIDL } from "../deps/vyper-core/target/types/redeem_logic_vanilla_option";
+import {
+  RedeemLogicVanillaOption,
+  IDL as RedeemLogicVanillaOptionIDL,
+} from "../deps/vyper-core/target/types/redeem_logic_vanilla_option";
 import { VyperCore, IDL as VyperCoreIDL } from "../deps/vyper-core/target/types/vyper_core";
 import { RedeemLogicVanillaOptionPlugin } from "../deps/vyper-core/tests/sdk/plugins/redeemLogic/RedeemLogicVanillaOptionPlugin";
 import { createVyperCoreTrancheConfig } from "../tests/utils/vyperCore";
@@ -30,18 +33,42 @@ const main = async () => {
     commitment: "confirmed",
   });
 
-  const redeemLogicVanillaOptionProgram = new Program<RedeemLogicVanillaOption>(RedeemLogicVanillaOptionIDL, REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID, provider);
+  const redeemLogicVanillaOptionProgram = new Program<RedeemLogicVanillaOption>(
+    RedeemLogicVanillaOptionIDL,
+    REDEEM_LOGIC_VANILLA_OPTION_PROGRAM_ID,
+    provider
+  );
   const redeemLogic = RedeemLogicVanillaOptionPlugin.create(redeemLogicVanillaOptionProgram, provider);
 
-  const program = new Program<VyperOtc>(VyperOtcIDL, new PublicKey("QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP"), provider);
-  const vyperCoreProgram = new Program<VyperCore>(VyperCoreIDL, new PublicKey("mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"), provider);
+  const program = new Program<VyperOtc>(
+    VyperOtcIDL,
+    new PublicKey("QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP"),
+    provider
+  );
+  const vyperCoreProgram = new Program<VyperCore>(
+    VyperCoreIDL,
+    new PublicKey("mb9NrZKiC3ZYUutgGhXwwkAL6Jkvmu5WLDbxWRZ8L9U"),
+    provider
+  );
 
   const otcState = anchor.web3.Keypair.generate();
-  const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress([otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")], program.programId);
+  const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress(
+    [otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")],
+    program.programId
+  );
 
   await redeemLogic.initialize(STRIKE, IS_CALL, IS_LINEAR);
 
-  const vyperConfig = await createVyperCoreTrancheConfig(provider, vyperCoreProgram, RESERVE_MINT, RATE_PLUGIN_PROGRAM_ID, RATE_PLUGIN_STATE, redeemLogic.programID, redeemLogic.state, otcAuthority);
+  const vyperConfig = await createVyperCoreTrancheConfig(
+    provider,
+    vyperCoreProgram,
+    RESERVE_MINT,
+    RATE_PLUGIN_PROGRAM_ID,
+    RATE_PLUGIN_STATE,
+    redeemLogic.programID,
+    redeemLogic.state,
+    otcAuthority
+  );
 
   // accounts to create
   const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
@@ -52,15 +79,15 @@ const main = async () => {
   // input data
 
   const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
-  const depositExpiration = nowSeconds + DEPOSIT_EXPIRATION_FROM_NOW_S;
-  const settleAvailableFrom = nowSeconds + SETTLE_AVAILABLE_FROM_NOW_S;
+  const depositEnd = nowSeconds + DEPOSIT_EXPIRATION_FROM_NOW_S;
+  const settleStart = nowSeconds + SETTLE_AVAILABLE_FROM_NOW_S;
 
   const tx = await program.methods
     .initialize({
       seniorDepositAmount: new anchor.BN(USER_A_DEPOSIT_AMOUNT),
       juniorDepositAmount: new anchor.BN(USER_B_DEPOSIT_AMOUNT),
-      depositExpiration: new anchor.BN(depositExpiration),
-      settleAvailableFrom: new anchor.BN(settleAvailableFrom),
+      depositEnd: new anchor.BN(depositEnd),
+      settleStart: new anchor.BN(settleStart),
     })
     .accounts({
       reserveMint: RESERVE_MINT,
@@ -75,7 +102,13 @@ const main = async () => {
       otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
       vyperTrancheConfig: vyperConfig.trancheConfig,
     })
-    .signers([otcState, otcSeniorReserveTokenAccount, otcJuniorReserveTokenAccount, otcSeniorTrancheTokenAccount, otcJuniorTrancheTokenAccount])
+    .signers([
+      otcState,
+      otcSeniorReserveTokenAccount,
+      otcJuniorReserveTokenAccount,
+      otcSeniorTrancheTokenAccount,
+      otcJuniorTrancheTokenAccount,
+    ])
     .rpc();
   console.log("tx: " + tx);
 

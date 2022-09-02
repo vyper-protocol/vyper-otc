@@ -128,7 +128,7 @@ pub fn handler(ctx: Context<RedeemContext>) -> Result<()> {
     
     // check that assets can be redeemed
     let clock = Clock::get()?;
-    if clock.unix_timestamp < ctx.accounts.otc_state.settle_available_from {
+    if clock.unix_timestamp < ctx.accounts.otc_state.settle_start {
         return err!(VyperOtcErrorCode::OtcClosed);
     }
 

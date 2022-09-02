@@ -4,8 +4,9 @@ use anchor_lang::prelude::*;
 pub struct OtcState {
 
     pub created: i64,
-    pub deposit_expiration: i64,
-    pub settle_available_from: i64,
+    pub deposit_start: i64,
+    pub deposit_end: i64,
+    pub settle_start: i64,
     pub settle_executed: bool,
     
     pub senior_deposit_amount: u64,
@@ -25,7 +26,7 @@ pub struct OtcState {
     pub authority_seed: Pubkey,
     pub authority_bump: [u8; 1],
 
-    pub description: [u8; 16],
+    pub description: [u8; 128],
 
     pub version: [u8; 3],
 }
@@ -41,8 +42,9 @@ impl OtcState {
 
     pub const LEN: usize = 8 + // discriminator
     8 + // pub created: i64,
-    8 + // pub deposit_expiration: i64,
-    8 + // pub settle_available_from: i64,
+    8 + // pub deposit_start: i64,
+    8 + // pub deposit_end: i64,
+    8 + // pub settle_start: i64,
     1 + // pub settle_executed: bool,
     8 + // pub senior_deposit_amount: u64,
     8 + // pub junior_deposit_amount: u64,
@@ -56,7 +58,7 @@ impl OtcState {
     32 + // pub otc_authority: Pubkey,
     32 + // pub authority_seed: Pubkey,
     1 + // pub authority_bump: [u8; 1],
-    16 + // pub description: [u8; 16],
+    128 + // pub description: [u8; 128],
     3 + // pub version: [u8; 3],
     64 // padding
     ;
