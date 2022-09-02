@@ -16,6 +16,7 @@ pub struct OtcState {
     pub junior_side_beneficiary: Option<Pubkey>,
 
     pub vyper_tranche_config: Pubkey,
+    pub vyper_core: Pubkey,
 
     pub otc_senior_reserve_token_account: Pubkey,
     pub otc_junior_reserve_token_account: Pubkey,
@@ -51,6 +52,7 @@ impl OtcState {
     1+32 + // pub senior_side_beneficiary: Option<Pubkey>,
     1+32 + // pub junior_side_beneficiary: Option<Pubkey>,
     32 + // pub vyper_tranche_config: Pubkey,
+    32 + // pub vyper_core: Pubkey,
     32 + // pub otc_senior_reserve_token_account: Pubkey,
     32 + // pub otc_junior_reserve_token_account: Pubkey,
     32 + // pub otc_senior_tranche_token_account: Pubkey,

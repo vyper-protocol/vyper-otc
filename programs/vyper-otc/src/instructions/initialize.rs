@@ -4,7 +4,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use vyper_core::state::{OwnerRestrictedIxFlags, TrancheConfig};
+use vyper_core::{state::{OwnerRestrictedIxFlags, TrancheConfig}, program::VyperCore};
 
 #[derive(Accounts)]
 pub struct InitializeContext<'info> {
@@ -58,6 +58,9 @@ pub struct InitializeContext<'info> {
     #[account(has_one = reserve_mint, has_one = senior_tranche_mint, has_one = junior_tranche_mint)]
     pub vyper_tranche_config: Box<Account<'info, TrancheConfig>>,
 
+    /// Vyper Core program
+    pub vyper_core: Program<'info, VyperCore>,
+    
     /// Rent program
     pub rent: Sysvar<'info, Rent>,
 
@@ -134,6 +137,7 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
     otc_state.otc_senior_tranche_token_account = ctx.accounts.otc_senior_tranche_token_account.key();
     otc_state.otc_junior_tranche_token_account = ctx.accounts.otc_junior_tranche_token_account.key();
     otc_state.vyper_tranche_config = ctx.accounts.vyper_tranche_config.key();
+    otc_state.vyper_core = ctx.accounts.vyper_core.key();
     otc_state.otc_authority = ctx.accounts.otc_authority.key();
     otc_state.authority_seed = otc_state.key();
     otc_state.authority_bump = [*ctx

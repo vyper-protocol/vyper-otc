@@ -120,6 +120,7 @@ describe("vyper-otc", () => {
           otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
           otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
           vyperTrancheConfig: vyperConfig.trancheConfig,
+          vyperCore: vyperCoreProgram.programId,
         })
         .signers([
           otcState,
@@ -230,6 +231,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -352,6 +354,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -527,6 +530,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -779,6 +783,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -940,6 +945,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -1145,6 +1151,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,
@@ -1265,6 +1272,7 @@ describe("vyper-otc", () => {
         otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
         otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
         vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
       })
       .signers([
         otcState,

@@ -24,6 +24,7 @@ pub struct DepositContext<'info> {
         has_one = otc_senior_tranche_token_account,
         has_one = otc_junior_tranche_token_account,
         has_one = otc_authority,
+        has_one = vyper_core,
         has_one = vyper_tranche_config)]
     pub otc_state: Box<Account<'info, OtcState>>,
 
