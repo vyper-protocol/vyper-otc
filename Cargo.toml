@@ -6,3 +6,7 @@ members = [
 exclude = [
     "deps/vyper-core",
 ]
+
+
+[profile.release]
+overflow-checks = true
