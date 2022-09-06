@@ -21,13 +21,13 @@ url = "https://api.mainnet-beta.solana.com"
 address = "8SXvChNYFhRq4EZuZvnhjrB3jJRQCv4k3P4W6hesH3Ee"
 
 [[test.genesis]]
-address = "29HSW1bCUHF9Kz1U9894nc9ycFCWTTTLMmKZmZ5qLwgT"
+address = "vyPErCcGJKQQBeeQ59gXcWrDyU4vBrq8qQfacwmsAsp"
 program = "./deps/vyper-core/target/deploy/vyper_core.so"
 
 [[test.genesis]]
-address = "EMg9whXe9Yk1vdmEwBmEfnucRAaombxC4HW1LyRy1tWD"
+address = "2hGXiH1oEQwjCXRx8bNdHTi49ScZp7Mj2bxcjxtULKe1"
 program = "./deps/vyper-core/target/deploy/rate_switchboard.so"
 
 [[test.genesis]]
-address = "Fz5JL6g8itRdw4nZtYjuScJZx2JATLE5SHNm1NwW87XV"
+address = "8fSeRtFseNrjdf8quE2YELhuzLkHV7WEGRPA9Jz8xEVe"
 program = "./deps/vyper-core/target/deploy/redeem_logic_vanilla_option.so"
