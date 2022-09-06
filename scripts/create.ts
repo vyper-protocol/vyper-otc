@@ -86,8 +86,10 @@ const main = async () => {
     .initialize({
       seniorDepositAmount: new anchor.BN(USER_A_DEPOSIT_AMOUNT),
       juniorDepositAmount: new anchor.BN(USER_B_DEPOSIT_AMOUNT),
+      depositStart: null,
       depositEnd: new anchor.BN(depositEnd),
       settleStart: new anchor.BN(settleStart),
+      description: new Array(128).fill(0),
     })
     .accounts({
       reserveMint: RESERVE_MINT,
