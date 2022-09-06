@@ -42,7 +42,7 @@ const main = async () => {
 
   const program = new Program<VyperOtc>(
     VyperOtcIDL,
-    new PublicKey("QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP"),
+    new PublicKey("8aHSkExY28qCvg4gnTLU7y1Ev6HnpJ1NxuWb9XtEesVt"),
     provider
   );
   const vyperCoreProgram = new Program<VyperCore>(

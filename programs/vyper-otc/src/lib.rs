@@ -5,7 +5,7 @@ pub mod state;
 use anchor_lang::prelude::*;
 use instructions::*;
 
-declare_id!("QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP");
+declare_id!("8aHSkExY28qCvg4gnTLU7y1Ev6HnpJ1NxuWb9XtEesVt");
 
 #[program]
 pub mod vyper_otc {

@@ -3,7 +3,7 @@ import { Program, Wallet } from "@project-serum/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { IDL } from "../target/types/vyper_otc";
 
-const PROGRAM_ID = new PublicKey("QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP");
+const PROGRAM_ID = new PublicKey("8aHSkExY28qCvg4gnTLU7y1Ev6HnpJ1NxuWb9XtEesVt");
 const OTC_STATE = new PublicKey("3TFa7RaVCRCRRftFcfsNvBu5zGMFGkropMWKFHNGEdkc");
 
 const main = async () => {

@@ -1,7 +1,7 @@
 [features]
 seeds = false
 [programs.localnet]
-vyper_otc = "QRd16aFfip7CEaXZUMQva4p9YYaQSog3ncEDTLoZPsP"
+vyper_otc = "8aHSkExY28qCvg4gnTLU7y1Ev6HnpJ1NxuWb9XtEesVt"
 
 [registry]
 url = "https://anchor.projectserum.com"
