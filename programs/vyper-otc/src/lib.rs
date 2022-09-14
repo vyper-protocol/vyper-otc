@@ -27,6 +27,13 @@ pub mod vyper_otc {
         instructions::deposit::handler(ctx, input_data)
     }
 
+    #[access_control(pre_ix("withdraw"))]
+    pub fn withdraw(
+        ctx: Context<WithdrawContext>,
+    ) -> Result<()> {
+        instructions::withdraw::handler(ctx)
+    }
+
     #[access_control(pre_ix("settle"))]
     pub fn settle(
         ctx: Context<RedeemContext>,
