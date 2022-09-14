@@ -3,7 +3,7 @@ import { Program } from "@project-serum/anchor";
 import { getAccount } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { RustDecimalWrapper } from "@vyper-protocol/rust-decimal-wrapper";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { RateSwitchboard, IDL as RateSwitchboardIDL } from "../deps/vyper-core/target/types/rate_switchboard";
 import {
   RedeemLogicVanillaOption,
@@ -710,6 +710,142 @@ describe("vyper-otc", () => {
     expect(Number((await getAccount(provider.connection, userB_tokenAccount)).amount)).to.be.gte(0);
     expect(Number((await getAccount(provider.connection, otcSeniorReserveTokenAccount.publicKey)).amount)).to.be.eq(0);
     expect(Number((await getAccount(provider.connection, otcJuniorReserveTokenAccount.publicKey)).amount)).to.be.eq(0);
+  });
+
+  it("single deposit and withdraw", async () => {
+    // input data
+    const seniorDepositAmount = 1000;
+    const juniorDepositAmount = 1000;
+    const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
+    const depositEnd = nowSeconds + 10;
+    const settleStart = nowSeconds + 20;
+
+    const {
+      reserveMint,
+      users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
+    } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
+    await redeemLogic.initialize(5000, true, true);
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts(
+        [BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false }))
+      )
+      .signers([rateData])
+      .rpc();
+
+    const otcState = anchor.web3.Keypair.generate();
+    const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress(
+      [otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")],
+      program.programId
+    );
+
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
+
+    // accounts to create
+    const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcSeniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+
+    const initTx = await program.methods
+      .initialize({
+        seniorDepositAmount: new anchor.BN(seniorDepositAmount),
+        juniorDepositAmount: new anchor.BN(juniorDepositAmount),
+        depositStart: null,
+        depositEnd: new anchor.BN(depositEnd),
+        settleStart: new anchor.BN(settleStart),
+        description: new Array(128).fill(0),
+      })
+      .accounts({
+        reserveMint,
+        otcAuthority,
+        otcState: otcState.publicKey,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
+      })
+      .signers([
+        otcState,
+        otcSeniorReserveTokenAccount,
+        otcJuniorReserveTokenAccount,
+        otcSeniorTrancheTokenAccount,
+        otcJuniorTrancheTokenAccount,
+      ])
+      .rpc();
+    console.log("init tx: ", initTx);
+
+    const depositTx = await program.methods
+      .deposit({
+        isSeniorSide: true,
+      })
+      .accounts({
+        userReserveTokenAccount: userA_tokenAccount,
+        beneficiaryTokenAccount: userA_tokenAccount,
+        otcState: otcState.publicKey,
+        otcAuthority,
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+
+        reserveMint,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperTrancheAuthority: vyperConfig.trancheAuthority,
+        vyperReserve: vyperConfig.vyperReserve,
+        vyperCore: vyperCoreProgram.programId,
+        signer: userA.publicKey,
+      })
+      .signers([userA])
+      .rpc();
+    console.log("deposit tx: ", depositTx);
+
+    while (Math.round(Date.now() / 1000) < settleStart + 2) {
+      await sleep(1000);
+    }
+
+    const withdrawTx = await program.methods
+      .withdraw()
+      .accounts({
+        userReserveTokenAccount: userA_tokenAccount,
+        beneficiaryTokenAccount: userA_tokenAccount,
+        otcState: otcState.publicKey,
+        otcAuthority,
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        reserveMint,
+        signer: userA.publicKey,
+      })
+      .signers([userA])
+      .rpc();
+    console.log("withdraw tx: ", withdrawTx);
+
+    // check token transfer
+    expect(Number((await getAccount(provider.connection, otcSeniorReserveTokenAccount.publicKey)).amount)).to.be.eq(0);
+    expect(Number((await getAccount(provider.connection, otcJuniorReserveTokenAccount.publicKey)).amount)).to.be.eq(0);
+    expect(Number((await getAccount(provider.connection, userA_tokenAccount)).amount)).to.be.eq(seniorDepositAmount);
   });
 
   it("error on double deposit for same side", async () => {
@@ -1431,6 +1567,329 @@ describe("vyper-otc", () => {
       expect(true).to.be.false;
     } catch (err) {
       expect(err.error.errorCode.code).to.be.eql("BeneficiaryNotFound");
+    }
+  });
+
+  it.only("error on 2 deposits and withdraw", async () => {
+    // input data
+    const seniorDepositAmount = 10;
+    const juniorDepositAmount = 1000;
+    const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
+    const depositEnd = nowSeconds + 8;
+    const settleStart = nowSeconds + 10;
+
+    const {
+      reserveMint,
+      users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
+    } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
+
+    await redeemLogic.initialize(5000, false, true);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts(
+        [BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false }))
+      )
+      .signers([rateData])
+      .rpc();
+
+    const otcState = anchor.web3.Keypair.generate();
+    const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress(
+      [otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")],
+      program.programId
+    );
+
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
+
+    // accounts to create
+    const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcSeniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+
+    const initTx = await program.methods
+      .initialize({
+        seniorDepositAmount: new anchor.BN(seniorDepositAmount),
+        juniorDepositAmount: new anchor.BN(juniorDepositAmount),
+        depositStart: null,
+        depositEnd: new anchor.BN(depositEnd),
+        settleStart: new anchor.BN(settleStart),
+        description: new Array(128).fill(0),
+      })
+      .accounts({
+        reserveMint,
+        otcAuthority,
+        otcState: otcState.publicKey,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
+      })
+      .signers([
+        otcState,
+        otcSeniorReserveTokenAccount,
+        otcJuniorReserveTokenAccount,
+        otcSeniorTrancheTokenAccount,
+        otcJuniorTrancheTokenAccount,
+      ])
+      .rpc();
+    console.log("init tx: ", initTx);
+
+    const depositATx = await program.methods
+      .deposit({
+        isSeniorSide: true,
+      })
+      .accounts({
+        userReserveTokenAccount: userA_tokenAccount,
+        beneficiaryTokenAccount: userA_tokenAccount,
+        otcState: otcState.publicKey,
+        otcAuthority,
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+
+        reserveMint,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperTrancheAuthority: vyperConfig.trancheAuthority,
+        vyperReserve: vyperConfig.vyperReserve,
+        vyperCore: vyperCoreProgram.programId,
+        signer: userA.publicKey,
+      })
+      .signers([userA])
+      .rpc();
+    console.log("user A deposited " + seniorDepositAmount + ". tx: ", depositATx);
+
+    const depositBTx = await program.methods
+      .deposit({
+        isSeniorSide: false,
+      })
+      .accounts({
+        userReserveTokenAccount: userB_tokenAccount,
+        beneficiaryTokenAccount: userB_tokenAccount,
+        otcState: otcState.publicKey,
+        otcAuthority,
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+
+        reserveMint,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperTrancheAuthority: vyperConfig.trancheAuthority,
+        vyperReserve: vyperConfig.vyperReserve,
+        vyperCore: vyperCoreProgram.programId,
+        signer: userB.publicKey,
+      })
+      .signers([userB])
+      .preInstructions([
+        await rateSwitchboardProgram.methods
+          .refresh()
+          .accounts({
+            rateData: rateData.publicKey,
+          })
+          .remainingAccounts(
+            [BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false }))
+          )
+          .instruction(),
+        await vyperCoreProgram.methods
+          .refreshTrancheFairValue()
+          .accounts({
+            trancheConfig: vyperConfig.trancheConfig,
+            seniorTrancheMint: vyperConfig.seniorTrancheMint,
+            juniorTrancheMint: vyperConfig.juniorTrancheMint,
+            rateProgramState: rateData.publicKey,
+            redeemLogicProgram: redeemLogic.programID,
+            redeemLogicProgramState: redeemLogic.state,
+          })
+          .instruction(),
+      ])
+      .rpc();
+    console.log("user B deposited " + juniorDepositAmount + ". tx: ", depositBTx);
+
+    // console.log("senior tranche amount: " + otcSeniorTrancheTokenAccount.publicKey + " -> " + Number((await getAccount(provider.connection, otcSeniorTrancheTokenAccount.publicKey)).amount));
+    // console.log("junior tranche amount: " + otcJuniorTrancheTokenAccount.publicKey + " -> " + Number((await getAccount(provider.connection, otcJuniorTrancheTokenAccount.publicKey)).amount));
+
+    while (Math.round(Date.now() / 1000) < settleStart + 2) {
+      await sleep(1000);
+    }
+
+    try {
+      const withdrawTx = await program.methods
+        .withdraw()
+        .accounts({
+          userReserveTokenAccount: userA_tokenAccount,
+          beneficiaryTokenAccount: userA_tokenAccount,
+          otcState: otcState.publicKey,
+          otcAuthority,
+          otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+          otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+          reserveMint,
+          signer: userA.publicKey,
+        })
+        .signers([userA])
+        .rpc();
+      expect(true).to.be.false;
+    } catch (err) {
+      expect(err.error.errorCode.code).to.be.eql("BothPositionsTaken");
+    }
+  });
+
+  it.only("error on withdraw before deposit time window ends", async () => {
+    // input data
+    const seniorDepositAmount = 10;
+    const juniorDepositAmount = 1000;
+    const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
+    const depositEnd = nowSeconds + 8;
+    const settleStart = nowSeconds + 10;
+
+    const {
+      reserveMint,
+      users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
+    } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
+
+    await redeemLogic.initialize(5000, false, true);
+
+    const rateData = anchor.web3.Keypair.generate();
+    await rateSwitchboardProgram.methods
+      .initialize()
+      .accounts({
+        signer: provider.wallet.publicKey,
+        rateData: rateData.publicKey,
+      })
+      .remainingAccounts(
+        [BTC_USD_SWITCHBOARD_AGGREGATOR].map((c) => ({ pubkey: c, isSigner: false, isWritable: false }))
+      )
+      .signers([rateData])
+      .rpc();
+
+    const otcState = anchor.web3.Keypair.generate();
+    const [otcAuthority] = await anchor.web3.PublicKey.findProgramAddress(
+      [otcState.publicKey.toBuffer(), anchor.utils.bytes.utf8.encode("authority")],
+      program.programId
+    );
+
+    const vyperConfig = await createVyperCoreTrancheConfig(
+      provider,
+      vyperCoreProgram,
+      reserveMint,
+      rateSwitchboardProgram.programId,
+      rateData.publicKey,
+      redeemLogic.programID,
+      redeemLogic.state,
+      otcAuthority
+    );
+
+    // accounts to create
+    const otcSeniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorReserveTokenAccount = anchor.web3.Keypair.generate();
+    const otcSeniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+    const otcJuniorTrancheTokenAccount = anchor.web3.Keypair.generate();
+
+    const initTx = await program.methods
+      .initialize({
+        seniorDepositAmount: new anchor.BN(seniorDepositAmount),
+        juniorDepositAmount: new anchor.BN(juniorDepositAmount),
+        depositStart: null,
+        depositEnd: new anchor.BN(depositEnd),
+        settleStart: new anchor.BN(settleStart),
+        description: new Array(128).fill(0),
+      })
+      .accounts({
+        reserveMint,
+        otcAuthority,
+        otcState: otcState.publicKey,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperCore: vyperCoreProgram.programId,
+      })
+      .signers([
+        otcState,
+        otcSeniorReserveTokenAccount,
+        otcJuniorReserveTokenAccount,
+        otcSeniorTrancheTokenAccount,
+        otcJuniorTrancheTokenAccount,
+      ])
+      .rpc();
+    console.log("init tx: ", initTx);
+
+    const depositATx = await program.methods
+      .deposit({
+        isSeniorSide: true,
+      })
+      .accounts({
+        userReserveTokenAccount: userA_tokenAccount,
+        beneficiaryTokenAccount: userA_tokenAccount,
+        otcState: otcState.publicKey,
+        otcAuthority,
+        otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+        otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+        otcSeniorTrancheTokenAccount: otcSeniorTrancheTokenAccount.publicKey,
+        otcJuniorTrancheTokenAccount: otcJuniorTrancheTokenAccount.publicKey,
+
+        reserveMint,
+        seniorTrancheMint: vyperConfig.seniorTrancheMint,
+        juniorTrancheMint: vyperConfig.juniorTrancheMint,
+
+        vyperTrancheConfig: vyperConfig.trancheConfig,
+        vyperTrancheAuthority: vyperConfig.trancheAuthority,
+        vyperReserve: vyperConfig.vyperReserve,
+        vyperCore: vyperCoreProgram.programId,
+        signer: userA.publicKey,
+      })
+      .signers([userA])
+      .rpc();
+    console.log("user A deposited " + seniorDepositAmount + ". tx: ", depositATx);
+
+    try {
+      const withdrawTx = await program.methods
+        .withdraw()
+        .accounts({
+          userReserveTokenAccount: userA_tokenAccount,
+          beneficiaryTokenAccount: userA_tokenAccount,
+          otcState: otcState.publicKey,
+          otcAuthority,
+          otcSeniorReserveTokenAccount: otcSeniorReserveTokenAccount.publicKey,
+          otcJuniorReserveTokenAccount: otcJuniorReserveTokenAccount.publicKey,
+          reserveMint,
+          signer: userA.publicKey,
+        })
+        .signers([userA])
+        .rpc();
+      expect(true).to.be.false;
+    } catch (err) {
+      expect(err.error.errorCode.code).to.be.eql("DepositOpen");
     }
   });
 });

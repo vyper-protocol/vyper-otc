@@ -11,9 +11,15 @@ pub enum VyperOtcErrorCode {
     #[msg("side already taken")]
     SideAlreadyTaken,
 
+    #[msg("deposit is open")]
+    DepositOpen,
+
     #[msg("deposit is closed")]
     DepositClosed,
     
+    #[msg("both positions taken")]
+    BothPositionsTaken,
+
     #[msg("otc is closed")]
     OtcClosed,
 
