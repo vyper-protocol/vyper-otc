@@ -16,7 +16,7 @@ First, install dependencies:
 $ yarn install
 ```
 
-And install Anchor by following the [instructions here](https://github.com/coral-xyz/anchor/blob/master/docs/src/getting-started/installation.md).
+And install Anchor by following the [instructions here](https://www.anchor-lang.com/docs/installation).
 
 Build the program:
 
