@@ -77,12 +77,12 @@ pub struct InitializeContext<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct InitializeInputData {
-    senior_deposit_amount: u64,
-    junior_deposit_amount: u64,
-    deposit_start: Option<i64>,
-    deposit_end: i64,
-    settle_start: i64,
-    description: [u8; 128]
+    pub senior_deposit_amount: u64,
+    pub junior_deposit_amount: u64,
+    pub deposit_start: Option<i64>,
+    pub deposit_end: i64,
+    pub settle_start: i64,
+    pub description: [u8; 128]
 }
 
 pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData) -> Result<()> {
