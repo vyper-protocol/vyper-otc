@@ -77,12 +77,11 @@ pub struct InitializeContext<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct InitializeInputData {
-    senior_deposit_amount: u64,
-    junior_deposit_amount: u64,
-    deposit_start: Option<i64>,
-    deposit_end: i64,
-    settle_start: i64,
-    description: [u8; 128]
+    pub senior_deposit_amount: u64,
+    pub junior_deposit_amount: u64,
+    pub deposit_start: Option<i64>,
+    pub deposit_end: i64,
+    pub settle_start: i64,
 }
 
 pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData) -> Result<()> {
@@ -129,7 +128,6 @@ pub fn handler(ctx: Context<InitializeContext>, input_data: InitializeInputData)
     otc_state.settle_executed = false;
     otc_state.senior_deposit_amount = input_data.senior_deposit_amount;
     otc_state.junior_deposit_amount = input_data.junior_deposit_amount;
-    otc_state.description = input_data.description;
 
     // accounts
     otc_state.otc_senior_reserve_token_account = ctx.accounts.otc_senior_reserve_token_account.key();

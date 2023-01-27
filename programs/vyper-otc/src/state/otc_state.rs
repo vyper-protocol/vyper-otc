@@ -27,8 +27,6 @@ pub struct OtcState {
     pub authority_seed: Pubkey,
     pub authority_bump: [u8; 1],
 
-    pub description: [u8; 128],
-
     pub version: [u8; 3],
 }
 
@@ -60,8 +58,6 @@ impl OtcState {
     32 + // pub otc_authority: Pubkey,
     32 + // pub authority_seed: Pubkey,
     1 + // pub authority_bump: [u8; 1],
-    128 + // pub description: [u8; 128],
-    3 + // pub version: [u8; 3],
-    64 // padding
+    3 // pub version: [u8; 3],
     ;
 }
