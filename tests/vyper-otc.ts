@@ -51,7 +51,7 @@ describe("vyper-otc", () => {
 
   it("initialize", async () => {
     const reserveMint = await createMint(provider);
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
 
     const redeemLogicStateAccount = await redeemLogicVanillaOptionProgram.account.redeemLogicConfig.fetch(
       redeemLogic.state
@@ -106,7 +106,6 @@ describe("vyper-otc", () => {
           depositStart: null,
           depositEnd: new anchor.BN(depositEnd),
           settleStart: new anchor.BN(settleStart),
-          description: new Array(128).fill(0),
         })
         .accounts({
           reserveMint,
@@ -173,7 +172,7 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const rateData = anchor.web3.Keypair.generate();
     await rateSwitchboardProgram.methods
       .initialize()
@@ -217,7 +216,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -296,7 +294,7 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const rateData = anchor.web3.Keypair.generate();
     await rateSwitchboardProgram.methods
       .initialize()
@@ -340,7 +338,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -516,7 +513,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -724,7 +720,7 @@ describe("vyper-otc", () => {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const rateData = anchor.web3.Keypair.generate();
     await rateSwitchboardProgram.methods
       .initialize()
@@ -768,7 +764,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -861,7 +856,7 @@ describe("vyper-otc", () => {
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
     } = await createTokenAccountWrapper(provider, [seniorDepositAmount, juniorDepositAmount]);
 
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const rateData = anchor.web3.Keypair.generate();
     await rateSwitchboardProgram.methods
       .initialize()
@@ -905,7 +900,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -1019,7 +1013,7 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositEnd = nowSeconds + 8;
     const settleStart = nowSeconds + 1000;
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
@@ -1067,7 +1061,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -1225,7 +1218,7 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositEnd = nowSeconds + 5;
     const settleStart = nowSeconds + 1000;
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const {
       reserveMint,
       users: [{ user: userA, tokenAccount: userA_tokenAccount }, { user: userB, tokenAccount: userB_tokenAccount }],
@@ -1273,7 +1266,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -1343,7 +1335,7 @@ describe("vyper-otc", () => {
     const nowSeconds = Math.round(Date.now() / 1000); // current UTC timestamp in seconds
     const depositEnd = nowSeconds + 8;
     const settleStart = nowSeconds + 10;
-    await redeemLogic.initialize(5000, true, true);
+    await redeemLogic.initialize(5000, 1, true, true);
     const {
       reserveMint,
       users: [
@@ -1395,7 +1387,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -1570,7 +1561,7 @@ describe("vyper-otc", () => {
     }
   });
 
-  it.only("error on 2 deposits and withdraw", async () => {
+  it("error on 2 deposits and withdraw", async () => {
     // input data
     const seniorDepositAmount = 10;
     const juniorDepositAmount = 1000;
@@ -1628,7 +1619,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
@@ -1760,7 +1750,7 @@ describe("vyper-otc", () => {
     }
   });
 
-  it.only("error on withdraw before deposit time window ends", async () => {
+  it("error on withdraw before deposit time window ends", async () => {
     // input data
     const seniorDepositAmount = 10;
     const juniorDepositAmount = 1000;
@@ -1818,7 +1808,6 @@ describe("vyper-otc", () => {
         depositStart: null,
         depositEnd: new anchor.BN(depositEnd),
         settleStart: new anchor.BN(settleStart),
-        description: new Array(128).fill(0),
       })
       .accounts({
         reserveMint,
