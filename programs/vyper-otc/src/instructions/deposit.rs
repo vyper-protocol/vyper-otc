@@ -135,7 +135,7 @@ impl<'info> DepositContext<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct DepositInputData {
-    is_senior_side: bool,
+    pub is_senior_side: bool,
 }
 
 #[allow(clippy::collapsible_else_if)]
