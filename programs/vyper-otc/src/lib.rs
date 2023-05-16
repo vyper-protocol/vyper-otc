@@ -47,6 +47,13 @@ pub mod vyper_otc {
     ) -> Result<()> {
         instructions::claim::handler(ctx)
     }
+
+    #[access_control(pre_ix("close"))]
+    pub fn close(
+        ctx: Context<CloseContext>,
+    ) -> Result<()> {
+        instructions::close::handler(ctx)
+    }
 }
 
 
