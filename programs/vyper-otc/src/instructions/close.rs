@@ -1,9 +1,11 @@
 use crate::{
-    errors::{ VyperOtcErrorCode },
-    state::{ OtcState }
+    errors::VyperOtcErrorCode,
+    state::OtcState
 };
 use anchor_lang::{prelude::*, AccountsClose};
-use anchor_spl::token::{self, TokenAccount, Token, CloseAccount};
+use anchor_spl::token::{self, TokenAccount, Token, CloseAccount, Mint};
+use vyper_core::{state::TrancheConfig, program::VyperCore};
+
 #[derive(Accounts)]
 pub struct CloseContext<'info> {
 
@@ -40,12 +42,50 @@ pub struct CloseContext<'info> {
     #[account(mut, token::authority = otc_authority)]
     pub otc_junior_tranche_token_account: Box<Account<'info, TokenAccount>>,
     
-    /// Token program
-    pub token_program: Program<'info, Token>,
+    // - - - - - - - - - - - - 
+    // Vyper Accounts
+
+    /// Senior Tranche Token mint
+    #[account(mut)]
+    pub senior_tranche_mint: Box<Account<'info, Mint>>,
+
+    /// Junior Tranche Token mint
+    #[account(mut)]
+    pub junior_tranche_mint: Box<Account<'info, Mint>>,
+
+    /// vyper core reserve ta
+    #[account(mut)]
+    pub reserve: Box<Account<'info, TokenAccount>>,
+
+    /// Vyper Core Tranche Configuration
+    #[account(
+        mut,
+        has_one = senior_tranche_mint,
+        has_one = junior_tranche_mint,
+        has_one = reserve,
+    )]
+    pub vyper_tranche_config: Box<Account<'info, TrancheConfig>>,
+
+    /// Vyper Core tranche configuration authority
+    /// CHECK:
+    #[account()]
+    pub vyper_tranche_authority: AccountInfo<'info>,
 
     /// Signer account
     #[account(mut)]
     pub signer: Signer<'info>,
+
+    /// Vyper Core program
+    pub vyper_core: Program<'info, VyperCore>,
+
+    /// System program
+    pub system_program: Program<'info, System>,
+
+    /// Token program
+    pub token_program: Program<'info, Token>,
+
+    /// Rent program
+    pub rent: Sysvar<'info, Rent>
 }
 
 pub fn handler(ctx: Context<CloseContext>) -> Result<()> {
@@ -53,6 +93,23 @@ pub fn handler(ctx: Context<CloseContext>) -> Result<()> {
     // check if deposit is closed
     let clock = Clock::get()?;
     require_gt!(clock.unix_timestamp, ctx.accounts.otc_state.deposit_end, VyperOtcErrorCode::DepositOpen);
+
+    // close vyper core
+
+    vyper_core::cpi::close(CpiContext::new_with_signer(
+        ctx.accounts.vyper_core.to_account_info(),
+        vyper_core::cpi::accounts::CloseContext {
+            fee_receiver: ctx.accounts.signer.to_account_info(),
+            owner: ctx.accounts.otc_authority.to_account_info(),
+            junior_tranche_mint: ctx.accounts.junior_tranche_mint.to_account_info(),
+            senior_tranche_mint: ctx.accounts.senior_tranche_mint.to_account_info(),
+            reserve: ctx.accounts.reserve.to_account_info(),
+            tranche_config: ctx.accounts.vyper_tranche_config.to_account_info(),
+            tranche_authority: ctx.accounts.vyper_tranche_authority.to_account_info(),
+            rent: ctx.accounts.rent.to_account_info(),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info()
+        }, &[&ctx.accounts.otc_state.authority_seeds()]))?;
 
     // NB we don't have to check if token accounts have zero balance
     // this is already checked by the token program below
