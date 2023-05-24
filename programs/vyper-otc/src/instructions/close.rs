@@ -71,6 +71,9 @@ pub struct CloseContext<'info> {
     #[account()]
     pub vyper_tranche_authority: AccountInfo<'info>,
 
+    #[account(mut)]
+    pub user_reserve_token: Account<'info, TokenAccount>,
+
     /// Signer account
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -100,6 +103,7 @@ pub fn handler(ctx: Context<CloseContext>) -> Result<()> {
         ctx.accounts.vyper_core.to_account_info(),
         vyper_core::cpi::accounts::CloseContext {
             fee_receiver: ctx.accounts.signer.to_account_info(),
+            user_reserve_token: ctx.accounts.user_reserve_token.to_account_info(),
             owner: ctx.accounts.otc_authority.to_account_info(),
             junior_tranche_mint: ctx.accounts.junior_tranche_mint.to_account_info(),
             senior_tranche_mint: ctx.accounts.senior_tranche_mint.to_account_info(),

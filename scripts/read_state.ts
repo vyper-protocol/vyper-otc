@@ -4,7 +4,7 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { IDL } from "../target/types/vyper_otc";
 
 const PROGRAM_ID = new PublicKey("8aHSkExY28qCvg4gnTLU7y1Ev6HnpJ1NxuWb9XtEesVt");
-const OTC_STATE = new PublicKey("3TFa7RaVCRCRRftFcfsNvBu5zGMFGkropMWKFHNGEdkc");
+const OTC_STATE = new PublicKey("7CFQsEJpZ4M9No3Y6bZZgpQQ8Mg5nmGZPyfCbQcX9Lsw");
 
 const main = async () => {
   const connection = new Connection("https://api.devnet.solana.com");
